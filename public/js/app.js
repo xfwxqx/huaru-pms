@@ -48,6 +48,7 @@ const App = {
             <li><a href="#home" class="nav-link" data-page="home">📊 进度展示</a></li>
             <li><a href="#projects" class="nav-link" data-page="projects">📁 项目管理</a></li>
             <li><a href="#warnings" class="nav-link" data-page="warnings">⚠️ 超时预警</a></li>
+            <li><a href="#test-dashboard" class="nav-link" data-page="test-dashboard">🧪 测试看板</a></li>
             ${this.user.role === '系统管理员' ? `
             <li><a href="#users" class="nav-link" data-page="users">👥 用户管理</a></li>
             <li><a href="#logs" class="nav-link" data-page="logs">📋 操作日志</a></li>` : ''}
@@ -121,6 +122,10 @@ const App = {
       case 'logs':
         content.innerHTML = await LogsPage.render();
         await LogsPage.mount();
+        break;
+      case 'test-dashboard':
+        content.innerHTML = await TestDashboardPage.render();
+        await TestDashboardPage.mount();
         break;
       default:
         this.navigate('home');

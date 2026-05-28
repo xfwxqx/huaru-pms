@@ -18,6 +18,7 @@
 - **超期预警**：进行中阶段超期自动标红提醒
 - **产品筛选**：实时搜索过滤产品列表
 - **操作日志**：完整的操作记录，支持按时间、用户、操作类型查询
+- **测试看板**：测试记录数据管理，支持数据可视化、筛选联动、文件缓存
 
 ### 技术亮点
 - **内存缓存**：DataStore + 请求级缓存，多用户读取性能提升 5-7 倍
@@ -142,6 +143,12 @@ huruo-pms/
 - `GET /api/progress` - 获取进度列表
 - `PUT /api/progress/:id` - 更新进度
 - `POST /api/progress/batch` - 批量更新进度
+
+### 测试记录
+- `GET /api/test-records/latest` - 获取最新缓存的测试数据
+- `POST /api/test-records/upload` - 上传并缓存测试数据文件
+- `GET /api/test-records/files` - 获取缓存文件列表
+- `DELETE /api/test-records/files/:name` - 删除指定缓存文件
 
 ## 配置说明
 

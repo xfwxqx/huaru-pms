@@ -30,6 +30,9 @@ app.get('/api/config', (req, res) => {
   res.json({ version: config.app.version });
 });
 
+// 公开路由 - 不需要认证（测试记录缓存）
+app.use('/api/test-records', require('./routes/test-records'));
+
 app.use('/api', authMiddleware);
 
 // Routes
@@ -39,6 +42,7 @@ app.use('/api/products', require('./routes/products'));
 app.use('/api/progress', require('./routes/progress'));
 app.use('/api/export', require('./routes/export'));
 app.use('/api/logs', require('./routes/logs'));
+app.use('/api/test-records', require('./routes/test-records'));
 
 // SPA fallback — 仅 GET 请求
 app.get('*', (req, res) => {

@@ -1,5 +1,95 @@
 # 更新日志
 
+## v0.4 (2026-05-28)
+
+### 新增功能
+
+#### 1. 测试看板页 - 测试记录数据管理
+**文件**: `public/js/pages/test-dashboard.js`, `routes/test-records.js`, `server.js`
+
+- 新增测试看板页面，用于展示和管理测试记录数据
+- **统计数据概览**：测试记录总数、项目数、产品数、版本数、BUG总数、平均测试时长
+- **数据可视化图表**：
+  - BUG等级分布 - 饼图（严重/重要/轻微/建议）
+  - 项目测试统计 - 柱状图（测试项 vs BUG数 vs 版本数）
+  - 测试人员工作量 - 横向柱状图
+  - 月度测试趋势 - 折线图（带面积填充）
+- **数据导入导出**：
+  - 支持导入 Excel (.xlsx/.xls) 和 JSON 格式文件
+  - 导入文件自动缓存到服务器
+  - 导出测试报告为 JSON 格式
+- **智能筛选联动**：
+  - 支持按项目、产品、测试人员、时间范围筛选
+  - 筛选项联动更新：选择任意条件后，其他选项自动过滤为符合条件的值
+  - 日期范围自动更新为当前筛选结果的时间区间
+- **日期格式兼容**：支持多种 Excel 日期格式（M/D/YY、YYYY-MM-DD 等）自动转换
+
+```javascript
+// 测试看板 API
+GET  /api/test-records/latest  // 获取最新缓存数据
+POST /api/test-records/upload   // 上传并缓存文件
+GET  /api/test-records/files    // 获取缓存文件列表
+DELETE /api/test-records/files/:name  // 删除缓存文件
+```
+
+#### 2. 测试记录文件缓存
+**文件**: `routes/test-records.js`, `cache/test-records/`
+
+- 导入 Excel 文件后自动缓存到服务器
+- 只保留最新导入的1个文件，新导入时自动删除旧文件
+- 页面加载时自动从服务器获取最新缓存数据
+- 缓存位置：`cache/test-records/`
+
+### 问题修复
+
+#### 3. 筛选项联动逻辑 - 选择测试人员后项目和产品被重置
+**文件**: `public/js/pages/test-dashboard.js`
+
+**问题描述**: 选择项目后再选择测试人员时，项目和产品筛选框被错误重置。
+
+**修复内容**: 重写筛选联动逻辑，计算三个条件的交集，正确更新各下拉选项并保留当前选中值。
+
+```javascript
+// 修复后的联动逻辑
+_onFilterChange: function(changedEl) {
+  // 计算项目+测试人员的交集，用于更新产品选项
+  var dataForProduct = baseData.filter(function(d) {
+    if (project && d.项目 !== project) return false;
+    if (tester && d.测试人员 !== tester) return false;
+    return true;
+  });
+  // ... 更新所有下拉框，保留当前选中值
+}
+```
+
+#### 4. Excel 日期格式解析 - M/D/YY 格式显示异常
+**文件**: `public/js/pages/test-dashboard.js`
+
+**问题描述**: 导入 Excel 文件后，日期显示为 "1/6/26" 格式而非 "2026-01-06"。
+
+**修复内容**: 增强日期解析函数，支持 M/D/YY、M/D/YYYY 等多种 Excel 常见格式。
+
+```javascript
+// 新增格式支持
+_dateShort: function(d) {
+  // M/D/YY 或 M/D/YYYY（Excel常见格式）
+  var m = v.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+  if (m) {
+    var year = m[3].length === 2 ? (Number(m[3]) < 50 ? '20' + m[3] : '19' + m[3]) : m[3];
+    return year + '-' + String(m[1]).padStart(2,'0') + '-' + String(m[2]).padStart(2,'0');
+  }
+}
+```
+
+#### 5. 月度测试趋势无数据 - 日期提取逻辑错误
+**文件**: `public/js/pages/test-dashboard.js`
+
+**问题描述**: 月度测试趋势图表无法显示数据，尽管数据中存在版本发布时间。
+
+**修复内容**: 改进月度趋势图的日期提取逻辑，支持 Excel 日期序列号和多种日期格式。
+
+---
+
 ## v0.3 (2026-05-27)
 
 ### 功能优化

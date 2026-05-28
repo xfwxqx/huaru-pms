@@ -263,9 +263,43 @@ tr:hover { background: var(--gray-50); }
 .stat-card.warning { border-left-color: var(--warning); }
 .stat-card.success { border-left-color: var(--success); }
 .stat-card.danger { border-left-color: var(--danger); }
+.stat-card.primary { border-left-color: var(--primary); }
+.stat-card.info { border-left-color: #4facfe; }
+.stat-card.secondary { border-left-color: var(--gray-400); }
 .stat-icon { font-size: clamp(22px, 2.2vw, 32px); }
 .stat-info .stat-num { font-size: clamp(20px, 2vw, 28px); font-weight: 700; color: var(--gray-900); }
 .stat-info .stat-label { font-size: clamp(10px, 0.65vw, 12px); color: var(--gray-500); margin-top: 2px; }
+
+/* ========== 测试看板 ========== */
+/* 看板容器 — 允许纵向滚动，覆盖 page-container 的裁剪限制 */
+.page-dashboard {
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  min-height: auto !important;
+  height: 100%;
+}
+
+/* 看板内卡片不裁切内容 */
+.page-dashboard .card { overflow: visible; min-height: auto; }
+
+/* 筛选栏 */
+.filter-bar { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
+.filter-bar .form-group { margin-bottom: 0 !important; min-width: 100px; }
+
+/* 图表网格 */
+.charts-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: clamp(12px, 1.2vw, 20px);
+}
+.charts-grid .card-body { min-height: 210px; overflow: visible !important; }
+
+/* 明细表格容器 — 撑满剩余空间独立滚动 */
+ .table-card { overflow: hidden; flex: 1; min-height: 0; }
+ .table-card .card-body { overflow-y: auto; flex: 1; min-height: 0; padding: 0; }
+ .table-card table { margin: 0; font-size: 10px; }
+ .table-card th { padding: 3px 5px; font-size: 9px; white-space: nowrap; }
+ .table-card td { padding: 2px 5px; font-size: 10px; }
 
 /* 预警列表 */
 .warning-list { }
@@ -410,6 +444,7 @@ tr:hover { background: var(--gray-50); }
   .projects-page-layout { grid-template-columns: 1fr; grid-template-rows: auto 1fr; }
   .home-bottom { grid-template-columns: 1fr; }
   .form-row { grid-template-columns: 1fr; }
+  .charts-grid { grid-template-columns: 1fr; }
   .navbar-brand { font-size: 14px; }
   .navbar-nav a { padding: 6px 10px; }
 }
