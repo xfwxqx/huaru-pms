@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+  <title>华如防务项目管理系统</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <div id="app">
+    <!-- 动态渲染 -->
+    <div id="page-loading" style="display:flex;align-items:center;justify-content:center;height:100vh;color:#2563eb;font-size:18px;">
+      <div class="spinner"></div>&nbsp;加载中...
+    </div>
+  </div>
+
+  <!-- 全局弹窗容器 -->
+  <div id="modal-overlay" class="modal-overlay" style="display:none;">
+    <div class="modal-box" id="modal-box"></div>
+  </div>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/components/gantt.js"></script>
+  <script src="/js/pages/login.js"></script>
+  <script src="/js/pages/home.js"></script>
+  <script src="/js/pages/projects.js"></script>
+  <script src="/js/pages/users.js"></script>
+  <script src="/js/pages/logs.js"></script>
+  <script src="/js/app.js"></script>
+  <!-- SheetJS - Excel 导入导出 -->
+  <script src="https://cdn.sheetjs.com/xlsx-0.18.5/package/dist/xlsx.full.min.js"></script>
+</body>
+</html>
