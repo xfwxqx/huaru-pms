@@ -76,7 +76,19 @@ const TestDashboardPage = {
         s.onload = resolve; document.head.appendChild(s);
       });
     }
-    this._renderCharts();
+    var self = this;
+    await new Promise(function(resolve) { setTimeout(resolve, 100); });
+    self._renderCharts();
+
+    // 窗口大小变化时重建图表（防抖：停止resize后100ms才重绘，避免拖拽过程中频繁重绘）
+    self._resizeHandlerFn = self._resizeHandlerFn || function() {
+      clearTimeout(self._resizeTimer);
+      self._resizeTimer = setTimeout(function() {
+        self._renderCharts();
+      }, 100);
+    };
+    window.removeEventListener('resize', self._resizeHandlerFn);
+    window.addEventListener('resize', self._resizeHandlerFn);
   },
 
   _fixData: function(arr) {
@@ -111,43 +123,91 @@ const TestDashboardPage = {
   },
 
   _renderCharts: function() {
-    this._destroyCharts();
+    var data = this._filteredData.slice();
+    this._renderChartsWithData(data);
+  },
+
+  _renderChartsWithData: function(data) {
     var self = this;
-    var data = this._filteredData.filter(function(d) { return self._isValid(d.项目); });
+    for (var k in this._charts) { try { this._charts[k].dispose(); } catch(e) {} }
+    this._charts = {};
+
+    var validData = data.filter(function(d) { return self._isValid(d.项目); });
 
     var bugEl = document.getElementById('td-chart-bug');
-    if (bugEl && bugEl.offsetWidth > 0) {
+    if (bugEl) {
       var bug = { 严重:0, 重要:0, 轻微:0, 建议:0 };
-      data.forEach(function(d) { bug.严重 += (Number(d.严重问题)||0); bug.重要 += (Number(d.重要问题)||0); bug.轻微 += (Number(d.轻微问题)||0); bug.建议 += (Number(d.建议问题)||0); });
+      validData.forEach(function(d) { bug.严重 += (Number(d.严重问题)||0); bug.重要 += (Number(d.重要问题)||0); bug.轻微 += (Number(d.轻微问题)||0); bug.建议 += (Number(d.建议问题)||0); });
       var bc = echarts.init(bugEl);
-      bc.setOption({ tooltip:{trigger:'item',formatter:'{b}: {c}'}, legend:{right:6,top:'center',orient:'vertical',textStyle:{fontSize:10}}, series:[{type:'pie',radius:['45%','72%'],center:['38%','50%'],itemStyle:{borderRadius:4,borderColor:'#fff',borderWidth:2},label:{show:false},data:[{value:bug.严重,name:'严重问题',itemStyle:{color:'#ef4444'}},{value:bug.重要,name:'重要问题',itemStyle:{color:'#f97316'}},{value:bug.轻微,name:'轻微问题',itemStyle:{color:'#3b82f6'}},{value:bug.建议,name:'建议问题',itemStyle:{color:'#22c55e'}}]}] });
+      bc.setOption({
+        tooltip:{trigger:'item',formatter:'{b}: {c}'},
+        legend:{right:6,top:'center',orient:'vertical',textStyle:{fontSize:10}},
+        series:[{
+          type:'pie',
+          radius:['45%','72%'],
+          center:['38%','50%'],
+          itemStyle:{borderRadius:4,borderColor:'#fff',borderWidth:2},
+          label:{show:true,formatter:'{b}\n{c}',fontSize:9},
+          data:[
+            {value:bug.严重,name:'严重问题',itemStyle:{color:'#ef4444'}},
+            {value:bug.重要,name:'重要问题',itemStyle:{color:'#f97316'}},
+            {value:bug.轻微,name:'轻微问题',itemStyle:{color:'#3b82f6'}},
+            {value:bug.建议,name:'建议问题',itemStyle:{color:'#22c55e'}}
+          ]
+        }]
+      });
       this._charts.bug = bc;
     }
 
     var projEl = document.getElementById('td-chart-project');
-    if (projEl && projEl.offsetWidth > 0) {
+    if (projEl) {
       var proj = {};
-      data.forEach(function(d) { if(!self._isValid(d.项目))return; if(!proj[d.项目])proj[d.项目]={t:0,b:0,v:0}; proj[d.项目].t+=(Number(d.测试项总数)||0); proj[d.项目].b+=(Number(d.BUG总数)||0); if(self._isValid(d.版本号))proj[d.项目].v++; });
+      validData.forEach(function(d) { if(!self._isValid(d.项目))return; if(!proj[d.项目])proj[d.项目]={t:0,b:0,v:0}; proj[d.项目].t+=(Number(d.测试项总数)||0); proj[d.项目].b+=(Number(d.BUG总数)||0); if(self._isValid(d.版本号))proj[d.项目].v++; });
       var keys = Object.keys(proj);
       var pc = echarts.init(projEl);
-      pc.setOption({ tooltip:{trigger:'axis',axisPointer:{type:'shadow'}}, legend:{data:['测试项','BUG数','版本数'],bottom:0,textStyle:{fontSize:9}}, grid:{left:6,right:6,top:22,bottom:26,containLabel:true}, xAxis:{type:'category',data:keys,axisLabel:{rotate:30,fontSize:9}}, yAxis:{type:'value',axisLabel:{fontSize:9}}, series:[{name:'测试项',type:'bar',data:keys.map(function(k){return proj[k].t}),itemStyle:{color:'#667eea',borderRadius:[2,2,0,0]}},{name:'BUG数',type:'bar',data:keys.map(function(k){return proj[k].b}),itemStyle:{color:'#ef4444',borderRadius:[2,2,0,0]}},{name:'版本数',type:'bar',data:keys.map(function(k){return proj[k].v}),itemStyle:{color:'#22c55e',borderRadius:[2,2,0,0]}}] });
+      pc.setOption({
+        tooltip:{trigger:'axis',axisPointer:{type:'shadow'}},
+        legend:{data:['测试项','BUG数','版本数'],bottom:0,textStyle:{fontSize:9}},
+        grid:{left:6,right:40,top:22,bottom:26,containLabel:true},
+        xAxis:{type:'category',data:keys,axisLabel:{rotate:30,fontSize:9}},
+        yAxis:[
+          {type:'value',name:'',axisLabel:{fontSize:9},splitLine:{lineStyle:{type:'dashed'}}},
+          {type:'value',name:'',axisLabel:{fontSize:9},splitLine:{show:false}}
+        ],
+        series:[
+          {name:'测试项',type:'bar',yAxisIndex:0,data:keys.map(function(k){return proj[k].t}),itemStyle:{color:'#667eea',borderRadius:[2,2,0,0]},barGap:'10%'},
+          {name:'BUG数',type:'bar',yAxisIndex:0,data:keys.map(function(k){return proj[k].b}),itemStyle:{color:'#ef4444',borderRadius:[2,2,0,0]}},
+          {name:'版本数',type:'line',yAxisIndex:1,data:keys.map(function(k){return proj[k].v}),itemStyle:{color:'#22c55e'},lineStyle:{width:2},symbol:'circle',symbolSize:6}
+        ]
+      });
       this._charts.project = pc;
     }
 
     var testerEl = document.getElementById('td-chart-tester');
-    if (testerEl && testerEl.offsetWidth > 0) {
+    if (testerEl) {
       var tester = {};
-      data.forEach(function(d) { if(!self._isValid(d.测试人员))return; if(!tester[d.测试人员])tester[d.测试人员]={t:0,b:0,v:0}; tester[d.测试人员].t+=(Number(d.测试项总数)||0); tester[d.测试人员].b+=(Number(d.BUG总数)||0); if(self._isValid(d.版本号))tester[d.测试人员].v++; });
+      validData.forEach(function(d) { if(!self._isValid(d.测试人员))return; if(!tester[d.测试人员])tester[d.测试人员]={t:0,b:0,v:0}; tester[d.测试人员].t+=(Number(d.测试项总数)||0); tester[d.测试人员].b+=(Number(d.BUG总数)||0); if(self._isValid(d.版本号))tester[d.测试人员].v++; });
       var tKeys = Object.keys(tester);
       var tc = echarts.init(testerEl);
-      tc.setOption({ tooltip:{trigger:'axis',axisPointer:{type:'shadow'}}, legend:{data:['测试项','BUG数','版本数'],bottom:0,textStyle:{fontSize:9}}, grid:{left:6,right:6,top:22,bottom:26,containLabel:true}, xAxis:{type:'value',axisLabel:{fontSize:9}}, yAxis:{type:'category',data:tKeys,axisLabel:{fontSize:9}}, series:[{name:'测试项',type:'bar',data:tKeys.map(function(k){return tester[k].t}),itemStyle:{color:'#3b82f6',borderRadius:[0,2,2,0]}},{name:'BUG数',type:'bar',data:tKeys.map(function(k){return tester[k].b}),itemStyle:{color:'#d946ef',borderRadius:[0,2,2,0]}},{name:'版本数',type:'bar',data:tKeys.map(function(k){return tester[k].v}),itemStyle:{color:'#22c55e',borderRadius:[0,2,2,0]}}] });
+      tc.setOption({
+        tooltip:{trigger:'axis',axisPointer:{type:'shadow'}},
+        legend:{data:['测试项','BUG数','版本数'],bottom:0,textStyle:{fontSize:9}},
+        grid:{left:6,right:40,top:22,bottom:26,containLabel:true},
+        xAxis:{type:'value',axisLabel:{fontSize:9},splitLine:{lineStyle:{type:'dashed'}}},
+        yAxis:{type:'category',data:tKeys,axisLabel:{fontSize:9}},
+        series:[
+          {name:'测试项',type:'bar',data:tKeys.map(function(k){return tester[k].t}),itemStyle:{color:'#3b82f6',borderRadius:[0,2,2,0]},barGap:'10%'},
+          {name:'BUG数',type:'bar',data:tKeys.map(function(k){return tester[k].b}),itemStyle:{color:'#d946ef',borderRadius:[0,2,2,0]}},
+          {name:'版本数',type:'line',data:tKeys.map(function(k){return tester[k].v}),itemStyle:{color:'#22c55e'},lineStyle:{width:2},symbol:'circle',symbolSize:6}
+        ]
+      });
       this._charts.tester = tc;
     }
 
     var monthEl = document.getElementById('td-chart-monthly');
-    if (monthEl && monthEl.offsetWidth > 0) {
+    if (monthEl) {
       var month = {};
-      data.forEach(function(d) {
+      validData.forEach(function(d) {
         var raw = String(d.版本发布时间||'').trim();
         if (!raw || raw === '-' || raw === '/' || raw === 'null' || raw === 'undefined') return;
         
@@ -187,7 +247,21 @@ const TestDashboardPage = {
       });
       var mKeys = Object.keys(month).sort();
       var mc = echarts.init(monthEl);
-      mc.setOption({ tooltip:{trigger:'axis'}, legend:{data:['测试项','BUG数','版本数'],bottom:0,textStyle:{fontSize:9}}, grid:{left:6,right:6,top:22,bottom:26,containLabel:true}, xAxis:{type:'category',boundaryGap:false,data:mKeys,axisLabel:{fontSize:9}}, yAxis:{type:'value',axisLabel:{fontSize:9}}, series:[{name:'测试项',type:'line',smooth:true,data:mKeys.map(function(k){return month[k].t}),areaStyle:{color:{type:'linear',x:0,y:0,x2:0,y2:1,colorStops:[{offset:0,color:'rgba(102,126,234,0.2)'},{offset:1,color:'rgba(102,126,234,0.02)'}]}},itemStyle:{color:'#667eea'},lineStyle:{width:2}},{name:'BUG数',type:'line',smooth:true,data:mKeys.map(function(k){return month[k].b}),areaStyle:{color:{type:'linear',x:0,y:0,x2:0,y2:1,colorStops:[{offset:0,color:'rgba(239,68,68,0.2)'},{offset:1,color:'rgba(239,68,68,0.02)'}]}},itemStyle:{color:'#ef4444'},lineStyle:{width:2}},{name:'版本数',type:'line',smooth:true,data:mKeys.map(function(k){return month[k].v}),itemStyle:{color:'#22c55e'},lineStyle:{width:2}}] });
+      mc.setOption({
+        tooltip:{trigger:'axis'},
+        legend:{data:['测试项','BUG数','版本数'],bottom:0,textStyle:{fontSize:9}},
+        grid:{left:6,right:40,top:22,bottom:26,containLabel:true},
+        xAxis:{type:'category',boundaryGap:false,data:mKeys,axisLabel:{fontSize:9}},
+        yAxis:[
+          {type:'value',name:'',axisLabel:{fontSize:9},splitLine:{lineStyle:{type:'dashed'}}},
+          {type:'value',name:'',axisLabel:{fontSize:9},splitLine:{show:false}}
+        ],
+        series:[
+          {name:'测试项',type:'line',yAxisIndex:0,smooth:true,data:mKeys.map(function(k){return month[k].t}),areaStyle:{color:{type:'linear',x:0,y:0,x2:0,y2:1,colorStops:[{offset:0,color:'rgba(102,126,234,0.2)'},{offset:1,color:'rgba(102,126,234,0.02)'}]}},itemStyle:{color:'#667eea'},lineStyle:{width:2}},
+          {name:'BUG数',type:'line',yAxisIndex:0,smooth:true,data:mKeys.map(function(k){return month[k].b}),areaStyle:{color:{type:'linear',x:0,y:0,x2:0,y2:1,colorStops:[{offset:0,color:'rgba(239,68,68,0.2)'},{offset:1,color:'rgba(239,68,68,0.02)'}]}},itemStyle:{color:'#ef4444'},lineStyle:{width:2}},
+          {name:'版本数',type:'bar',yAxisIndex:1,data:mKeys.map(function(k){return month[k].v}),itemStyle:{color:'#22c55e',borderRadius:[2,2,0,0]},barWidth:12}
+        ]
+      });
       this._charts.monthly = mc;
     }
   },
@@ -324,10 +398,10 @@ const TestDashboardPage = {
         '<td style="font-size:9px;">'+ (self._dateShort(r.版本发布时间)||'-') +'</td>'+
         '<td>'+ (self._isValid(r.测试人员)?r.测试人员:'-') +'</td>'+
         '<td style="text-align:center;">'+ (r.测试项总数 != null ? r.测试项总数 : '-') +'</td>'+
-        '<td style="text-align:center;">'+ (r.BUG总数 != null ? r.BUG总数 : '-') +'</td>'+
+        '<td style="text-align:center;color:var(--danger);font-weight:600;">'+ (r.BUG总数 != null ? r.BUG总数 : '-') +'</td>'+
         '<td style="text-align:center;">'+ (r.测试时长 != null ? r.测试时长 : '-') +'</td>'+
-        '<td style="text-align:center;color:var(--danger);font-weight:600;">'+ (r.严重问题||'-') +'</td>'+
-        '<td style="text-align:center;color:#d946ef;font-weight:600;">'+ (r.重要问题||'-') +'</td></tr>';
+        '<td style="text-align:center;color:#f97316;font-weight:600;">'+ (r.严重问题||'-') +'</td>'+
+        '<td style="text-align:center;">'+ (r.重要问题||'-') +'</td></tr>';
     }).join('');
     return '<div class="table-wrap"><table style="font-size:9px;"><thead><tr>'+
       '<th style="font-size:8px;">序号</th><th style="font-size:8px;">项目</th><th style="font-size:8px;">产品名称</th>'+
@@ -365,24 +439,32 @@ const TestDashboardPage = {
     } catch (e) { App.showToast('导入失败: ' + e.message, 'error'); }
   },
 
-  _export: function() {
-    var s = this._stats();
-    var blob = new Blob([JSON.stringify({
-      统计时间:new Date().toLocaleString(),
-      测试记录总数:s.records,
-      项目数:s.projects,
-      产品数:s.products,
-      版本数:s.versions,
-      测试项总数:s.testItems,
-      BUG总数:s.bugs,
-      平均测试时长:s.avgDuration.toFixed(1)+'天',
-      明细:this._filteredData
-    }, null, 2)], { type:'application/json' });
-    var a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = '测试报告_'+new Date().toISOString().slice(0,10)+'.json';
-    a.click();
-    App.showToast('报告已导出', 'success');
+  async _export() {
+    if (this._filteredData.length === 0) {
+      App.showToast('没有可导出的数据', 'error');
+      return;
+    }
+    try {
+      App.showToast('正在生成Word报告...', 'info');
+      var resp = await fetch('/api/test-records/export-report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ records: this._filteredData })
+      });
+      if (!resp.ok) {
+        var err = await resp.json();
+        App.showToast(err.message || '报告生成失败', 'error');
+        return;
+      }
+      var blob = await resp.blob();
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = '测试看板分析报告_' + new Date().toISOString().slice(0,10) + '.docx';
+      a.click();
+      App.showToast('Word报告已导出', 'success');
+    } catch (e) {
+      App.showToast('报告生成失败: ' + e.message, 'error');
+    }
   },
 
   async _rerender() {

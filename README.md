@@ -18,7 +18,7 @@
 - **超期预警**：进行中阶段超期自动标红提醒
 - **产品筛选**：实时搜索过滤产品列表
 - **操作日志**：完整的操作记录，支持按时间、用户、操作类型查询
-- **测试看板**：测试记录数据管理，支持数据可视化、筛选联动、文件缓存
+- **测试看板**：测试记录数据管理，支持数据可视化、筛选联动、文件缓存、Word报告导出
 
 ### 技术亮点
 - **内存缓存**：DataStore + 请求级缓存，多用户读取性能提升 5-7 倍
@@ -34,6 +34,7 @@
 | 数据库 | sql.js（SQLite WASM） |
 | 认证 | JWT + bcryptjs |
 | Excel | SheetJS (xlsx) |
+| Word | docx (docx-js) |
 | 前端 | 原生 JavaScript + CSS |
 | 架构 | SPA（单页应用） |
 
@@ -149,6 +150,7 @@ huruo-pms/
 - `POST /api/test-records/upload` - 上传并缓存测试数据文件
 - `GET /api/test-records/files` - 获取缓存文件列表
 - `DELETE /api/test-records/files/:name` - 删除指定缓存文件
+- `POST /api/test-records/export-report` - 导出Word分析报告
 
 ## 配置说明
 

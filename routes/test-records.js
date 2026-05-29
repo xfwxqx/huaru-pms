@@ -171,4 +171,22 @@ router.delete('/files/:name', (req, res) => {
   }
 });
 
+// 导出Word报告
+router.post('/export-report', async (req, res) => {
+  try {
+    const records = req.body.records || req.body;
+    if (!Array.isArray(records) || records.length === 0) {
+      return res.status(400).json({ success: false, message: '没有测试记录数据' });
+    }
+    const { generateReport } = require('../utils/report-generator');
+    const buffer = await generateReport(records);
+    res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+    res.setHeader('Content-Disposition', 'attachment; filename*=UTF-8\'\'%E6%B5%8B%E8%AF%95%E7%9C%8B%E6%9D%BF%E5%88%86%E6%9E%90%E6%8A%A5%E5%91%8A_' + new Date().toISOString().slice(0,10) + '.docx');
+    res.send(buffer);
+  } catch (e) {
+    console.error('[测试记录] 报告生成失败:', e.message);
+    res.status(500).json({ success: false, message: '报告生成失败: ' + e.message });
+  }
+});
+
 module.exports = router;
